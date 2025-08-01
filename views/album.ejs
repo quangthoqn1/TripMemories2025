@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Album: <%= albumName %></title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="background">
+
+  <div class="container">
+    <h1>🖼️ Album: <%= albumName %></h1>
+    <a href="/" class="back-button"><i class="fas fa-arrow-left"></i> Back</a>
+
+    <form action="/upload/<%= albumName %>" method="POST" enctype="multipart/form-data" class="form-inline">
+      <input type="file" name="image" required />
+      <button type="submit"><i class="fas fa-upload"></i> Upload</button>
+    </form>
+
+    <div class="grid-container">
+      <% images.forEach(image => { %>
+        <div class="card">
+          <div class="tooltip">
+            <img src="/uploads/<%= albumName %>/<%= image %>" alt="<%= image %>" />
+            <span class="tooltiptext">Uploaded: <%= getImageUploadTime(image) %></span>
+          </div>
+          <div class="image-name"><%= image %></div>
+          <div class="actions">
+            <form action="/rename-image/<%= albumName %>/<%= image %>" method="POST">
+              <input type="text" name="newName" placeholder="Rename" required />
+              <button type="submit"><i class="fas fa-edit"></i></button>
+            </form>
+            <form action="/delete-image/<%= albumName %>/<%= image %>" method="POST" onsubmit="return confirm('Delete this image?');">
+              <button type="submit"><i class="fas fa-trash-alt"></i></button>
+            </form>
+            <a href="/uploads/<%= albumName %>/<%= image %>" download>
+              <button type="button"><i class="fas fa-download"></i></button>
+            </a>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+</body>
+</html>

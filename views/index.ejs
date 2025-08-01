@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memory Keeper - Albums</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="background">
+
+  <div class="container">
+    <h1>📁 Memory Keeper</h1>
+
+    <form action="/create-album" method="POST" class="form-inline">
+      <input type="text" name="albumName" placeholder="New album name" required />
+      <button type="submit"><i class="fas fa-plus"></i> Create</button>
+    </form>
+
+    <div class="grid-container">
+      <% albums.forEach(album => { %>
+        <div class="card">
+          <% if (albumThumbnails[album]) { %>
+            <a href="/album/<%= album %>">
+              <img src="/uploads/<%= album %>/<%= albumThumbnails[album] %>" alt="<%= album %>" />
+            </a>
+          <% } else { %>
+            <a href="/album/<%= album %>">
+              <div class="empty-thumbnail">No Image</div>
+            </a>
+          <% } %>
+          <div class="album-name"><%= album %></div>
+          <div class="actions">
+            <form action="/rename-album/<%= album %>" method="POST">
+              <input type="text" name="newName" placeholder="Rename" required />
+              <button type="submit"><i class="fas fa-edit"></i></button>
+            </form>
+            <form action="/delete-album/<%= album %>" method="POST" onsubmit="return confirm('Delete this album?');">
+              <button type="submit"><i class="fas fa-trash-alt"></i></button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+</body>
+</html>
