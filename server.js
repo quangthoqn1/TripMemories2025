@@ -1,103 +1,210 @@
-const express = require('express');
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
+const express = require("express");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const bodyParser = require("body-parser");
+
 const app = express();
 const PORT = 3000;
 
-const uploadsDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+// Middleware
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static("public"));
+app.set("view engine", "ejs");
 
-function getAlbumList() {
-  return fs.readdirSync(uploadsDir).filter(file =>
-    fs.statSync(path.join(uploadsDir, file)).isDirectory()
-  );
+// Load avatar data
+const avatarFile = "albumAvatars.json";
+function loadAvatars() {
+  if (!fs.existsSync(avatarFile)) return {};
+  return JSON.parse(fs.readFileSync(avatarFile));
+}
+function saveAvatars(avatars) {
+  fs.writeFileSync(avatarFile, JSON.stringify(avatars, null, 2));
 }
 
-function getImageUploadTime(imagePath) {
-  const stats = fs.statSync(imagePath);
-  return new Date(stats.ctime).toLocaleString();
-}
-
+// Storage setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const albumDir = path.join(uploadsDir, req.params.album);
-    if (!fs.existsSync(albumDir)) fs.mkdirSync(albumDir);
-    cb(null, albumDir);
+  destination: function (req, file, cb) {
+    const albumName = req.params.albumName;
+    const albumPath = path.join("public/uploads", albumName);
+    cb(null, albumPath);
   },
-  filename: (req, file, cb) => cb(null, file.originalname),
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  },
 });
 const upload = multer({ storage });
 
-app.set('view engine', 'ejs');
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.urlencoded({ extended: true }));
-
-app.get('/', (req, res) => {
-  const albums = getAlbumList();
-  const albumThumbnails = {};
-  albums.forEach(album => {
-    const files = fs.readdirSync(path.join(uploadsDir, album)).filter(f => /\.(jpg|jpeg|png|gif)$/i.test(f));
-    albumThumbnails[album] = files[0] || null;
-  });
-
-  res.render('index', { albums, albumThumbnails });
+// Trang mặc định
+app.get("/", (req, res) => {
+  const albums = fs
+    .readdirSync("public/uploads")
+    .filter((f) => fs.lstatSync(`public/uploads/${f}`).isDirectory());
+  const avatars = loadAvatars();
+  res.render("index", { albums, avatars, error: null });
 });
-
-app.get('/album/:albumName', (req, res) => {
-  const albumName = req.params.albumName;
-  const albumPath = path.join(uploadsDir, albumName);
-  if (!fs.existsSync(albumPath)) return res.status(404).send('Album not found');
-  const files = fs.readdirSync(albumPath).filter(f => /\.(jpg|jpeg|png|gif)$/i.test(f));
-  res.render('album', {
-    albumName,
-    images: files,
-    getImageUploadTime: (file) => getImageUploadTime(path.join(albumPath, file))
-  });
+// Trang danh sách album
+app.get("/home", (req, res) => {
+  const albums = fs
+    .readdirSync("public/uploads")
+    .filter((f) => fs.lstatSync(`public/uploads/${f}`).isDirectory());
+  const avatars = loadAvatars();
+  res.render("home", { albums, avatars, error: null });
 });
-
-app.post('/create-album', (req, res) => {
+// Tạo album
+app.post("/create-album", (req, res) => {
   const albumName = req.body.albumName.trim();
-  if (albumName) {
-    const dir = path.join(uploadsDir, albumName);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+  const albumPath = path.join("public/uploads", albumName);
+
+  const albums = fs
+    .readdirSync("public/uploads")
+    .filter((f) => fs.lstatSync(`public/uploads/${f}`).isDirectory());
+  const avatars = loadAvatars();
+
+  if (fs.existsSync(albumPath)) {
+    return res.render("index", {
+      albums,
+      avatars,
+      error: "Tên album đã tồn tại!",
+    });
   }
-  res.redirect('/');
+  fs.mkdirSync(albumPath);
+  res.redirect("/home");
 });
 
-app.post('/upload/:album', upload.single('image'), (req, res) => {
-  res.redirect(`/album/${req.params.album}`);
-});
-
-app.post('/delete-album/:album', (req, res) => {
-  const dir = path.join(uploadsDir, req.params.album);
-  fs.rmSync(dir, { recursive: true, force: true });
-  res.redirect('/');
-});
-
-app.post('/rename-album/:album', (req, res) => {
-  const oldPath = path.join(uploadsDir, req.params.album);
+// Sửa tên album
+app.post("/rename-album/:oldName", (req, res) => {
+  const oldName = req.params.oldName;
   const newName = req.body.newName.trim();
-  const newPath = path.join(uploadsDir, newName);
-  if (fs.existsSync(oldPath) && newName) fs.renameSync(oldPath, newPath);
-  res.redirect('/');
+  const oldPath = path.join("public/uploads", oldName);
+  const newPath = path.join("public/uploads", newName);
+
+  const albums = fs
+    .readdirSync("public/uploads")
+    .filter((f) => fs.lstatSync(`public/uploads/${f}`).isDirectory());
+  const avatars = loadAvatars();
+
+  if (fs.existsSync(newPath)) {
+    return res.render("index", {
+      albums,
+      avatars,
+      error: "Tên album đã tồn tại!",
+    });
+  }
+  fs.renameSync(oldPath, newPath);
+
+  let avatarData = loadAvatars();
+  if (avatarData[oldName]) {
+    avatarData[newName] = avatarData[oldName];
+    delete avatarData[oldName];
+    saveAvatars(avatarData);
+  }
+  res.redirect("/home");
 });
 
-app.post('/delete-image/:album/:image', (req, res) => {
-  const filePath = path.join(uploadsDir, req.params.album, req.params.image);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  res.redirect(`/album/${req.params.album}`);
+// Xóa album
+app.post("/delete-album/:albumName", (req, res) => {
+  const albumName = req.params.albumName;
+  const albumPath = path.join("public/uploads", albumName);
+
+  fs.rmSync(albumPath, { recursive: true, force: true });
+
+  let avatarData = loadAvatars();
+  delete avatarData[albumName];
+  saveAvatars(avatarData);
+
+  res.redirect("/home");
 });
 
-app.post('/rename-image/:album/:image', (req, res) => {
-  const album = req.params.album;
+// Trang album
+// Trang album
+app.get("/album/:albumName", (req, res) => {
+  const albumName = req.params.albumName;
+  const albumPath = path.join("public/uploads", albumName);
+
+  if (!fs.existsSync(albumPath)) return res.redirect("/");
+
+  const images = fs
+    .readdirSync(albumPath)
+    .filter((f) => fs.lstatSync(path.join(albumPath, f)).isFile())
+    .map((file) => {
+      const stats = fs.statSync(path.join(albumPath, file));
+      return {
+        name: file,
+        date: stats.mtime.toLocaleString("vi-VN"), // ngày giờ cuối cùng chỉnh sửa/upload
+      };
+    });
+
+  const avatars = loadAvatars();
+  const currentAvatar = avatars[albumName] || null;
+
+  res.render("album", { albumName, images, currentAvatar, error: null });
+});
+
+// Upload ảnh vào album
+app.post("/upload/:albumName", upload.single("image"), (req, res) => {
+  res.redirect(`/album/${req.params.albumName}`);
+});
+
+// Sửa tên ảnh
+app.post("/rename-image/:albumName/:imageName", (req, res) => {
+  console.log(req);
+  const { albumName, imageName } = req.params;
   const newName = req.body.newName.trim();
-  const oldPath = path.join(uploadsDir, album, req.params.image);
-  const newPath = path.join(uploadsDir, album, newName);
-  if (fs.existsSync(oldPath) && newName) fs.renameSync(oldPath, newPath);
-  res.redirect(`/album/${album}`);
+  const albumPath = path.join("public/uploads", albumName);
+  const oldImagePath = path.join(albumPath, imageName);
+  const ext = path.extname(imageName);
+  const newImagePath = path.join(albumPath, newName + ext);
+
+  if (fs.existsSync(newImagePath)) {
+    const images = fs
+      .readdirSync(albumPath)
+      .filter((f) => fs.lstatSync(path.join(albumPath, f)).isFile());
+    const avatars = loadAvatars();
+    const currentAvatar = avatars[albumName] || null;
+    return res.render("album", {
+      albumName,
+      images,
+      currentAvatar,
+      error: "Tên ảnh đã tồn tại!",
+    });
+  }
+
+  fs.renameSync(oldImagePath, newImagePath);
+
+  let avatarData = loadAvatars();
+  if (avatarData[albumName] === imageName) {
+    avatarData[albumName] = newName + ext;
+    saveAvatars(avatarData);
+  }
+  res.redirect(`/album/${albumName}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running: http://localhost:${PORT}`);
+// Xóa ảnh
+app.post("/delete-image/:albumName/:imageName", (req, res) => {
+  const { albumName, imageName } = req.params;
+  const imagePath = path.join("public/uploads", albumName, imageName);
+
+  fs.unlinkSync(imagePath);
+
+  let avatarData = loadAvatars();
+  if (avatarData[albumName] === imageName) {
+    delete avatarData[albumName];
+    saveAvatars(avatarData);
+  }
+
+  res.redirect(`/album/${albumName}`);
 });
+
+// Set avatar
+app.post("/set-avatar/:albumName/:imageName", (req, res) => {
+  const { albumName, imageName } = req.params;
+  let avatarData = loadAvatars();
+  avatarData[albumName] = imageName;
+  saveAvatars(avatarData);
+  res.redirect(`/album/${albumName}`);
+});
+
+app.listen(PORT, () =>
+  console.log(`Server running at http://localhost:${PORT}`)
+);

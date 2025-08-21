@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Albums</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="page-index">
+  <!-- Nội dung chính (ẩn lúc đầu + có fadeIn) -->
+  <div class="fade-in">
+    <h1>Danh sách Album</h1>
+
+    <% if (error) { %>
+      <div style="background-color: #ffdddd; color: #a00; padding: 10px; border: 1px solid #a00; margin-bottom: 15px;">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <!-- Form tạo album -->
+    <form id="createAlbumForm" action="/create-album" method="POST" style="margin-bottom: 20px;">
+      <input type="text" name="albumName" placeholder="Nhập tên album" required>
+      <button type="submit"><i class="fas fa-plus"></i> Tạo Album</button>
+    </form>
+
+    <div class="grid-container">
+      <% albums.forEach(album => { %>
+        <div class="card">
+          <% if (avatars[album]) { %>
+            <img src="/uploads/<%= album %>/<%= avatars[album] %>" alt="avatar" />
+          <% } else { %>
+            <div class="empty-thumbnail">No Avatar</div>
+          <% } %>
+          <div class="album-name"><%= album %></div>
+          
+          <!-- Nút mở album -->
+          <a href="/album/<%= album %>" class="open-btn"><i class="fas fa-folder-open"></i> Mở</a>
+
+          <!-- Form sửa tên album -->
+          <form action="/rename-album/<%= album %>" method="POST" style="display:inline;">
+            <input type="text" name="newName" placeholder="Sửa tên" required>
+            <button type="submit"><i class="fas fa-edit"></i></button>
+          </form>
+
+          <!-- Xóa album -->
+          <form action="/delete-album/<%= album %>" method="POST" style="display:inline;">
+            <button type="submit" onclick="return confirm('Xóa album này?')"><i class="fas fa-trash"></i></button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,47 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Album: <%= albumName %></title>
-  <link rel="stylesheet" href="/style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <meta charset="UTF-8">
+  <title>Album <%= albumName %></title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="background">
+<body class="page-album">
+  <h1>Album: <%= albumName %></h1>
 
-  <div class="container">
-    <h1>🖼️ Album: <%= albumName %></h1>
-    <a href="/" class="back-button"><i class="fas fa-arrow-left"></i> Back</a>
+  <!-- Form upload -->
+  <form action="/upload/<%= albumName %>" method="POST" enctype="multipart/form-data">
+    <input type="file" name="image" required>
+    <button type="submit"><i class="fas fa-upload"></i> Upload</button>
+  </form>
 
-    <form action="/upload/<%= albumName %>" method="POST" enctype="multipart/form-data" class="form-inline">
-      <input type="file" name="image" required />
-      <button type="submit"><i class="fas fa-upload"></i> Upload</button>
-    </form>
+  <!-- Danh sách ảnh -->
+  <div class="grid-container">
+  <% images.forEach(img => { %>
+    <div class="card tooltip">
+      <img src="/uploads/<%= albumName %>/<%= img.name %>" alt="photo">
+      <span class="tooltiptext">Upload: <%= img.date %></span>
+      <div class="album-name"><%= img.name.split(".")[0] %></div>
+      <form action="/rename-image/<%= albumName %>/<%= img.name %>" method="POST" style="display:inline;">
+        <input type="text" name="newName" placeholder="Sửa tên" required>
+        <button type="submit"><i class="fas fa-edit"></i></button>
+      </form>
+      <!-- Đặt avatar -->
+      <form action="/set-avatar/<%= albumName %>/<%= img.name %>" method="POST" style="display:inline;">
+        <button type="submit" title="Đặt làm avatar"><i class="fas fa-star"></i></button>
+      </form>
 
-    <div class="grid-container">
-      <% images.forEach(image => { %>
-        <div class="card">
-          <div class="tooltip">
-            <img src="/uploads/<%= albumName %>/<%= image %>" alt="<%= image %>" />
-            <span class="tooltiptext">Uploaded: <%= getImageUploadTime(image) %></span>
-          </div>
-          <div class="image-name"><%= image %></div>
-          <div class="actions">
-            <form action="/rename-image/<%= albumName %>/<%= image %>" method="POST">
-              <input type="text" name="newName" placeholder="Rename" required />
-              <button type="submit"><i class="fas fa-edit"></i></button>
-            </form>
-            <form action="/delete-image/<%= albumName %>/<%= image %>" method="POST" onsubmit="return confirm('Delete this image?');">
-              <button type="submit"><i class="fas fa-trash-alt"></i></button>
-            </form>
-            <a href="/uploads/<%= albumName %>/<%= image %>" download>
-              <button type="button"><i class="fas fa-download"></i></button>
-            </a>
-          </div>
-        </div>
-      <% }) %>
+      <!-- Xóa ảnh -->
+      <form action="/delete-image/<%= albumName %>/<%= img.name %>" method="POST" style="display:inline;">
+        <button type="submit" onclick="return confirm('Xóa ảnh này?')" title="Xóa ảnh"><i class="fas fa-trash"></i></button>
+      </form>
+
+      <!-- Download ảnh -->
+      <a href="/uploads/<%= albumName %>/<%= img.name %>" download class="download-btn" title="Tải xuống">
+        <i class="fas fa-download"></i>
+      </a>
     </div>
-  </div>
+  <% }) %>
+</div>
 
+
+  <a href="/home" class="open-btn"><i class="fas fa-home"></i> Quay lại</a>
 </body>
 </html>
